@@ -273,6 +273,19 @@
     return h % 1 === 0 ? h.toFixed(0) : h.toFixed(2).replace(/\.?0+$/, '');
   }
 
+  // ── Format a duration (in hours) as "1h 13min 48sec" ─────────────────────
+  function fmtDuration(hours) {
+    const totalSec = Math.round(Math.abs(hours) * 3600);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    const parts = [];
+    if (h > 0) parts.push(`${h}h`);
+    if (m > 0) parts.push(`${m}min`);
+    if (s > 0 || parts.length === 0) parts.push(`${s}sec`);
+    return parts.join(' ');
+  }
+
   // ── Add extraction row ────────────────────────────────────────────────────
   function addExtraction() {
     clearError();
@@ -317,6 +330,13 @@
     `;
 
     container.appendChild(row);
+
+    // Default extraction date to the same date as administration (time left at 00:00:00)
+    const adminEl = document.getElementById('admin-time');
+    if (adminEl.value) {
+      const adminDate = adminEl.value.split('T')[0];
+      document.getElementById(`ext-time-${id}`).value = `${adminDate}T00:00:00`;
+    }
   }
 
   // ── Remove extraction row ─────────────────────────────────────────────────
@@ -391,20 +411,18 @@
       const maxValid = expectedHours + windowHours;
       const valid    = elapsedHours >= minValid && elapsedHours <= maxValid;
 
-      const elapsedDisplay = fmtHours(Math.abs(elapsedHours));
-      const direction      = elapsedHours < 0 ? 'before' : 'after';
-      const withinStr      = valid ? 'within' : 'outside';
-      const windowDisp     = windowMin < 60
-        ? `${windowMin} min`
-        : `${fmtHours(windowMin / 60)} hr`;
+      const elapsedDisplay  = fmtDuration(Math.abs(elapsedHours));
+      const direction       = elapsedHours < 0 ? 'before' : 'after';
+      const withinStr       = valid ? 'within' : 'outside';
+      const minValidDisplay = minValid < 0 ? '0sec' : fmtDuration(minValid);
+      const maxValidDisplay = fmtDuration(maxValid);
 
       resultEl.className = `result-panel ${valid ? 'valid' : 'invalid'}`;
       resultEl.innerHTML =
         `<span class="result-badge">${valid ? '✔ VALID' : '✘ INVALID'}</span>` +
-        `Extraction logged <strong>${elapsedDisplay} hrs</strong> ${direction} administration, ` +
+        `Extraction logged <strong>${elapsedDisplay}</strong> ${direction} administration, ` +
         `${withinStr} window of ` +
-        `<strong>${fmtHours(expectedHours)} hr${expectedHours === 1 ? '' : 's'}</strong> ` +
-        `± ${windowDisp}.`;
+        `<strong>${minValidDisplay}</strong> to <strong>${maxValidDisplay}</strong>.`;
     });
 
     if (!allFilled) {
