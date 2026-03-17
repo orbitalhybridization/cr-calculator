@@ -376,7 +376,7 @@
     // Default extraction date to the same date as administration (time left at 00:00:00)
     const adminEl = document.getElementById('admin-time');
     if (adminEl.value) {
-      const adminDate = adminEl.value.split('T')[0];
+      const adminDate = adminEl.value.split(' ')[0];
       extFp.setDate(`${adminDate}T00:00:00`, false);
     }
   }
@@ -428,7 +428,7 @@
 
     // Both admin and extraction use datetime-local (no timezone suffix),
     // so Date() parses both as local time — elapsed difference is timezone-safe.
-    const adminMs = new Date(adminEl.value).getTime();
+    const adminMs = new Date(adminEl.value.replace(/ /g, 'T')).getTime();
     let allFilled = true;
 
     rows.forEach(row => {
@@ -525,7 +525,7 @@
     enableTime: true,
     enableSeconds: true,
     time_24hr: true,
-    dateFormat: 'Y-m-dTH:i:S',
+    dateFormat: 'Y-m-d H:i:S',
     allowInput: true
   });
 </script>
