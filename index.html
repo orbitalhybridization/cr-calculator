@@ -157,6 +157,16 @@
       margin-right: 6px;
     }
 
+    .result-main {
+      font-size: 0.88rem;
+    }
+
+    .result-details {
+      font-size: 0.78rem;
+      opacity: 0.85;
+      margin-top: 5px;
+    }
+
     /* ── Buttons ── */
     .btn-row {
       display: flex;
@@ -359,7 +369,7 @@
       enableTime: true,
       enableSeconds: true,
       time_24hr: true,
-      dateFormat: 'Y-m-dTH:i:S',
+      dateFormat: 'Y-m-d H:i:S',
       allowInput: true
     });
 
@@ -436,7 +446,7 @@
       }
       extEl.style.borderColor = '';
 
-      const extMs        = new Date(extEl.value).getTime();
+      const extMs        = new Date(extEl.value.replace(/ /g, 'T')).getTime();
       const elapsedMs    = extMs - adminMs;
       const elapsedHours = elapsedMs / MS_PER_HOUR;
       const expectedHours = parseFloat(intEl.value);
@@ -449,18 +459,39 @@
 
       const elapsedDisplay  = fmtDuration(Math.abs(elapsedHours));
       const direction       = elapsedHours < 0 ? 'before' : 'after';
-      const withinStr       = valid ? 'within' : 'outside of';
       const minValidDate    = new Date(adminMs + Math.max(0, minValid) * MS_PER_HOUR);
       const maxValidDate    = new Date(adminMs + maxValid * MS_PER_HOUR);
       const minValidTimeStr = fmtTime(minValidDate);
       const maxValidTimeStr = fmtTime(maxValidDate);
 
       resultEl.className = `result-panel ${valid ? 'valid' : 'invalid'}`;
-      resultEl.innerHTML =
-        `<span class="result-badge">${valid ? '✔ VALID' : '✘ INVALID'}</span>` +
-        `Extraction logged <strong>${elapsedDisplay}</strong> ${direction} administration, ` +
-        `${withinStr} window of ` +
-        `<strong>${minValidTimeStr}</strong> to <strong>${maxValidTimeStr}</strong> (+/- ${windowMin} minutes).`;
+
+      if (valid) {
+        resultEl.innerHTML =
+          `<span class="result-badge">✔ VALID</span>` +
+          `Extraction logged <strong>${elapsedDisplay}</strong> ${direction} administration, ` +
+          `within window of <strong>${minValidTimeStr}</strong> to <strong>${maxValidTimeStr}</strong>.`;
+      } else {
+        let distanceHours, windowPosition;
+        if (elapsedHours > maxValid) {
+          distanceHours  = elapsedHours - maxValid;
+          windowPosition = 'after';
+        } else {
+          distanceHours  = minValid - elapsedHours;
+          windowPosition = 'before';
+        }
+        const distanceDisplay = fmtDuration(distanceHours);
+        const idealDate       = new Date(adminMs + expectedHours * MS_PER_HOUR);
+        const idealTimeStr    = fmtTime(idealDate);
+
+        resultEl.innerHTML =
+          `<div class="result-main"><span class="result-badge">✘ INVALID</span>` +
+          `<strong>${distanceDisplay}</strong> ${windowPosition} required window.</div>` +
+          `<div class="result-details">More info: Extraction logged <strong>${elapsedDisplay}</strong> ` +
+          `${direction} administration, taken outside of <strong>${minValidTimeStr}</strong> to ` +
+          `<strong>${maxValidTimeStr}</strong>. It is <strong>${distanceDisplay}</strong> outside of ` +
+          `the +/- ${windowMin} minutes window around ideal time of <strong>${idealTimeStr}</strong>.</div>`;
+      }
     });
 
     if (!allFilled) {
