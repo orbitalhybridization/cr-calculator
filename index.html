@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CR Calculator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #eef2f7;
+      color: #2c3e50;
+      min-height: 100vh;
+      padding: 30px 16px;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #1a2c42;
+      margin-bottom: 28px;
+      letter-spacing: 0.5px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      padding: 24px;
+      margin-bottom: 20px;
+      max-width: 880px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .section-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #7f8c9a;
+      margin-bottom: 12px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #34495e;
+    }
+
+    input[type="datetime-local"],
+    select {
+      padding: 8px 10px;
+      border: 1px solid #ccd3de;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      color: #2c3e50;
+      background: #fdfdfe;
+      outline: none;
+      transition: border-color 0.2s;
+      width: 100%;
+    }
+
+    input[type="datetime-local"]:focus,
+    select:focus {
+      border-color: #3498db;
+      box-shadow: 0 0 0 3px rgba(52,152,219,0.15);
+    }
+
+    /* ── Extraction rows ── */
+    #extractions-container {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .extraction-row {
+      display: grid;
+      grid-template-columns: 28px 1fr 1fr 36px;
+      gap: 10px;
+      align-items: start;
+      background: #f8fafc;
+      border: 1px solid #e3e9f0;
+      border-radius: 8px;
+      padding: 14px 12px;
+      position: relative;
+    }
+
+    .row-num {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #95a5a6;
+      padding-top: 28px;
+      text-align: center;
+    }
+
+    .remove-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #c0ccd8;
+      font-size: 1.25rem;
+      line-height: 1;
+      padding-top: 26px;
+      transition: color 0.2s;
+    }
+
+    .remove-btn:hover { color: #e74c3c; }
+
+    /* ── Result panel inside each row ── */
+    .result-panel {
+      grid-column: 1 / -1;
+      display: none;
+      margin-top: 6px;
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      line-height: 1.5;
+    }
+
+    .result-panel.valid {
+      display: block;
+      background: #eafaf1;
+      border-left: 4px solid #27ae60;
+      color: #1e8449;
+    }
+
+    .result-panel.invalid {
+      display: block;
+      background: #fef0f0;
+      border-left: 4px solid #e74c3c;
+      color: #c0392b;
+    }
+
+    .result-badge {
+      font-weight: 700;
+      font-size: 0.88rem;
+      margin-right: 6px;
+    }
+
+    /* ── Buttons ── */
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 18px;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+
+    .btn:active { transform: scale(0.97); }
+
+    .btn-add  { background: #3498db; color: #fff; }
+    .btn-add:hover  { background: #2980b9; }
+
+    .btn-calc { background: #27ae60; color: #fff; }
+    .btn-calc:hover { background: #229954; }
+
+    .btn-clear { background: #ecf0f1; color: #555; border: 1px solid #ccd3de; }
+    .btn-clear:hover { background: #dde3ea; }
+
+    .empty-state {
+      text-align: center;
+      color: #aab2bd;
+      font-size: 0.88rem;
+      padding: 20px 0 8px;
+    }
+
+    /* ── Inline error banner ── */
+    #error-banner {
+      display: none;
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 0.875rem;
+      color: #856404;
+      margin-top: 12px;
+    }
+
+    #error-banner.visible { display: block; }
+
+    /* ── Responsive ── */
+    @media (max-width: 560px) {
+      .extraction-row {
+        grid-template-columns: 24px 1fr 36px;
+        grid-template-rows: auto auto;
+      }
+      .extraction-row .interval-col {
+        grid-column: 2 / 3;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<h1>CR Calculator</h1>
+
+<!-- Administration time -->
+<div class="card">
+  <div class="section-title">Administration</div>
+  <label for="admin-time">Administration Date &amp; Time</label>
+  <input type="datetime-local" id="admin-time" step="1" />
+</div>
+
+<!-- Extractions -->
+<div class="card">
+  <div class="section-title">Extractions</div>
+  <div id="extractions-container">
+    <p class="empty-state" id="empty-msg">No extractions added yet. Click <strong>Add Extraction</strong> to begin.</p>
+  </div>
+
+  <div class="btn-row" style="margin-top: 18px;">
+    <button class="btn btn-add" onclick="addExtraction()">
+      ＋ Add Extraction
+    </button>
+    <button class="btn btn-calc" onclick="calculate()">
+      ✔ Calculate
+    </button>
+    <button class="btn btn-clear" onclick="clearAll()">
+      ✕ Clear All
+    </button>
+  </div>
+
+  <div id="error-banner" role="alert" aria-live="polite"></div>
+</div>
+
+<script>
+  // ── Constants ─────────────────────────────────────────────────────────────
+  const MS_PER_HOUR = 1000 * 60 * 60;
+  let rowCounter = 0;
+
+  const INTERVALS = [0.5, 1, 2, 2.5, 3, 3.5, 4, 4.5, 5, 6, 8, 10, 12];
+
+  // ── Inline error banner ───────────────────────────────────────────────────
+  function showError(msg) {
+    const banner = document.getElementById('error-banner');
+    banner.textContent = msg;
+    banner.classList.add('visible');
+  }
+
+  function clearError() {
+    const banner = document.getElementById('error-banner');
+    banner.textContent = '';
+    banner.classList.remove('visible');
+  }
+
+  // ── Validity window (minutes) based on actual elapsed hours ───────────────
+  function getWindowMinutes(elapsedHours) {
+    if (elapsedHours >= 0.5 && elapsedHours <= 12)  return 5;
+    if (elapsedHours > 12   && elapsedHours <= 48)  return 20;
+    if (elapsedHours > 48)                           return 60;
+    return 5; // < 0.5h defaults to tightest window
+  }
+
+  // ── Format hours for display ──────────────────────────────────────────────
+  function fmtHours(h) {
+    return h % 1 === 0 ? h.toFixed(0) : h.toFixed(2).replace(/\.?0+$/, '');
+  }
+
+  // ── Add extraction row ────────────────────────────────────────────────────
+  function addExtraction() {
+    clearError();
+    rowCounter++;
+    const id = rowCounter;
+
+    const emptyMsg = document.getElementById('empty-msg');
+    if (emptyMsg) emptyMsg.remove();
+
+    const container = document.getElementById('extractions-container');
+
+    const row = document.createElement('div');
+    row.className = 'extraction-row';
+    row.id = `row-${id}`;
+    row.dataset.rowId = id;
+
+    // interval options
+    const optionHTML = INTERVALS.map(v =>
+      `<option value="${v}">${fmtHours(v)} hr${v === 1 ? '' : 's'}</option>`
+    ).join('');
+
+    row.innerHTML = `
+      <div class="row-num" aria-hidden="true">${id}</div>
+
+      <div>
+        <label for="ext-time-${id}">Extraction Date &amp; Time</label>
+        <input type="datetime-local" id="ext-time-${id}" step="1"
+               aria-label="Extraction ${id} date and time" />
+      </div>
+
+      <div class="interval-col">
+        <label for="ext-interval-${id}">Expected Interval</label>
+        <select id="ext-interval-${id}" aria-label="Extraction ${id} expected interval">
+          ${optionHTML}
+        </select>
+      </div>
+
+      <button class="remove-btn" onclick="removeExtraction(${id})"
+              title="Remove extraction ${id}" aria-label="Remove extraction ${id}">✕</button>
+
+      <div class="result-panel" id="result-${id}" role="status" aria-live="polite"></div>
+    `;
+
+    container.appendChild(row);
+  }
+
+  // ── Remove extraction row ─────────────────────────────────────────────────
+  function removeExtraction(id) {
+    clearError();
+    const row = document.getElementById(`row-${id}`);
+    if (row) row.remove();
+
+    // Re-number remaining rows
+    const rows = document.querySelectorAll('.extraction-row');
+    rows.forEach((r, idx) => {
+      const numEl = r.querySelector('.row-num');
+      if (numEl) numEl.textContent = idx + 1;
+    });
+
+    if (rows.length === 0) {
+      const container = document.getElementById('extractions-container');
+      const p = document.createElement('p');
+      p.className = 'empty-state';
+      p.id = 'empty-msg';
+      p.innerHTML = 'No extractions added yet. Click <strong>Add Extraction</strong> to begin.';
+      container.appendChild(p);
+    }
+  }
+
+  // ── Calculate ─────────────────────────────────────────────────────────────
+  function calculate() {
+    clearError();
+
+    const adminEl = document.getElementById('admin-time');
+    if (!adminEl.value) {
+      showError('Please enter an administration date & time.');
+      adminEl.focus();
+      return;
+    }
+
+    const rows = document.querySelectorAll('.extraction-row');
+
+    if (rows.length === 0) {
+      showError('Please add at least one extraction.');
+      return;
+    }
+
+    // Both admin and extraction use datetime-local (no timezone suffix),
+    // so Date() parses both as local time — elapsed difference is timezone-safe.
+    const adminMs = new Date(adminEl.value).getTime();
+    let allFilled = true;
+
+    rows.forEach(row => {
+      const id = row.dataset.rowId;
+      const extEl    = document.getElementById(`ext-time-${id}`);
+      const intEl    = document.getElementById(`ext-interval-${id}`);
+      const resultEl = document.getElementById(`result-${id}`);
+
+      if (!extEl.value) {
+        extEl.style.borderColor = '#e74c3c';
+        allFilled = false;
+        resultEl.className = 'result-panel';
+        resultEl.innerHTML  = '';
+        return;
+      }
+      extEl.style.borderColor = '';
+
+      const extMs        = new Date(extEl.value).getTime();
+      const elapsedMs    = extMs - adminMs;
+      const elapsedHours = elapsedMs / MS_PER_HOUR;
+      const expectedHours = parseFloat(intEl.value);
+      const windowMin    = getWindowMinutes(elapsedHours);
+      const windowHours  = windowMin / 60;
+
+      const minValid = expectedHours - windowHours;
+      const maxValid = expectedHours + windowHours;
+      const valid    = elapsedHours >= minValid && elapsedHours <= maxValid;
+
+      const elapsedDisplay = fmtHours(Math.abs(elapsedHours));
+      const direction      = elapsedHours < 0 ? 'before' : 'after';
+      const withinStr      = valid ? 'within' : 'outside';
+      const windowDisp     = windowMin < 60
+        ? `${windowMin} min`
+        : `${fmtHours(windowMin / 60)} hr`;
+
+      resultEl.className = `result-panel ${valid ? 'valid' : 'invalid'}`;
+      resultEl.innerHTML =
+        `<span class="result-badge">${valid ? '✔ VALID' : '✘ INVALID'}</span>` +
+        `Extraction logged <strong>${elapsedDisplay} hrs</strong> ${direction} administration, ` +
+        `${withinStr} window of ` +
+        `<strong>${fmtHours(expectedHours)} hr${expectedHours === 1 ? '' : 's'}</strong> ` +
+        `± ${windowDisp}.`;
+    });
+
+    if (!allFilled) {
+      showError('Please fill in all extraction times before calculating.');
+    }
+  }
+
+  // ── Clear all ─────────────────────────────────────────────────────────────
+  function clearAll() {
+    clearError();
+    document.getElementById('admin-time').value = '';
+    const container = document.getElementById('extractions-container');
+    container.innerHTML =
+      '<p class="empty-state" id="empty-msg">No extractions added yet. Click <strong>Add Extraction</strong> to begin.</p>';
+    rowCounter = 0;
+  }
+</script>
+</body>
+</html>
